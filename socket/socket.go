@@ -15,7 +15,7 @@ import (
 var Unpack func(data []byte) (reaminData []byte,isContuine bool,isSucc bool,server string)
 
 
-func HandleConnection(conn net.Conn, timeout int) {
+func HandleConnection(conn net.Conn) {
 
 	//声明一个临时缓冲区，用来存储被截断的数据
 	var tmpBuffer []byte

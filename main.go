@@ -48,10 +48,7 @@ func InitTcpServer(port string) {
 		}
 
 		log.Debug(conn.RemoteAddr().String(), " tcp connect success")
-		// 如果此链接超过60秒没有发送新的数据，将被关闭
-		// 超时时间 这里需要注意 如果对方不发心跳 可能会被直接关闭
-		// 超时已经关闭 因为目前有的socket客户端并没有遵循发送心跳
-		go socket.HandleConnection(conn, 60)
+		go socket.HandleConnection(conn)
 	}
 }
 
