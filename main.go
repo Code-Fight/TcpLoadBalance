@@ -53,7 +53,7 @@ func InitTcpServer(port string) {
 }
 
 //解包
-func Unpack(buffer []byte) (reaminData []byte,isContuine bool,isSucc bool,server string) {
+func Unpack(buffer []byte) (remainData []byte,isContuine bool,isSucc bool,server string) {
 	return buffer,false,true,"192.168.2.115:12048"
 
 	length := len(buffer)
