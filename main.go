@@ -11,7 +11,13 @@ import (
 	"os"
 )
 
+
+
 func main() {
+
+	VersionInit()
+
+
 	units.ConfigInit()
 	port:=units.GetPort()
 
@@ -96,4 +102,7 @@ func Unpack(buffer []byte) (remainData []byte,isContuine bool,isSucc bool,server
 	return buffer[i:],true,false,""
 }
 
+func AssignBackend() {
+
+}
 
