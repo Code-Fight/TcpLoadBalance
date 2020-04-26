@@ -23,3 +23,8 @@ func GetPort() string {
 	return viper.GetString("port")
 }
 
+func GetBackend() map[string]string {
+	return viper.GetStringMapString("backend")
+
+}
+

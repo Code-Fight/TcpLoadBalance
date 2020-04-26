@@ -1,11 +1,44 @@
 package balance
 import (
+	"TcpLoadBalance/units"
 	"crypto/sha1"
 	"sync"
 	"math"
 	"sort"
 	"strconv"
 )
+
+type HashBalancer struct {
+	hbalancer *HashRing
+}
+
+
+
+func(bl *HashBalancer) BalanceInit() {
+
+	backend:=units.GetBackend()
+
+	if len(backend)==0{
+		panic("you need some backend sever")
+	}
+
+	bl.hbalancer = newHashRing(0)
+	for  key,value:=range backend{
+
+		weight,err:=strconv.Atoi(value)
+		if err!=nil{
+			panic(err)
+		}
+		bl.hbalancer.AddNode(key,weight)
+	}
+}
+
+func(bl *HashBalancer) GetNode(s string) string{
+	return bl.hbalancer.getNode(s)
+}
+
+
+
 //Refer :https://github.com/g4zhuj/hashring/blob/5d542568fdbd35c6572588f810414d8d23ff32f3/hashring.go
 
 const (
@@ -34,8 +67,8 @@ type HashRing struct {
 	mu          sync.RWMutex
 }
 
-//NewHashRing create a hash ring with virual spots
-func NewHashRing(spots int) *HashRing {
+//NewHashRing create a hashBalancer ring with virual spots
+func newHashRing(spots int) *HashRing {
 	if spots == 0 {
 		spots = DefaultVirualSpots
 	}
@@ -47,7 +80,7 @@ func NewHashRing(spots int) *HashRing {
 	return h
 }
 
-//AddNodes add nodes to hash ring
+//AddNodes add nodes to hashBalancer ring
 func (h *HashRing) AddNodes(nodeWeight map[string]int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -57,7 +90,7 @@ func (h *HashRing) AddNodes(nodeWeight map[string]int) {
 	h.generate()
 }
 
-//AddNode add node to hash ring
+//AddNode add node to hashBalancer ring
 func (h *HashRing) AddNode(nodeKey string, weight int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -117,7 +150,7 @@ func genValue(bs []byte) uint32 {
 }
 
 //GetNode get node with key
-func (h *HashRing) GetNode(s string) string {
+func (h *HashRing) getNode(s string) string {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	if len(h.nodes) == 0 {

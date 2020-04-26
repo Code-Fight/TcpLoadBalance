@@ -1,11 +1,13 @@
 package socket
 
 import (
+	"TcpLoadBalance/linuxRoute"
 	"acln.ro/zerocopy"
 	"github.com/Code-Fight/golog"
 	"io"
 	"net"
 	"reflect"
+	"runtime"
 )
 // tcp data 拆包 并进行连接分发
 // reaminData 没成功解包 剩下的数据 参与到下一次的解包中,
@@ -15,14 +17,10 @@ import (
 var Unpack func(data []byte) (reaminData []byte,isContuine bool,isSucc bool,server string)
 
 
-func HandleConnection(conn net.Conn) {
+func HandleConnection(conn net.Conn,route *linuxRoute.Route) {
 
 	//声明一个临时缓冲区，用来存储被截断的数据
 	var tmpBuffer []byte
-
-
-
-	
 
 	//是否已经连接
 	isConnected:=false
@@ -38,32 +36,40 @@ func HandleConnection(conn net.Conn) {
 
 	buffer := make([]byte, 4096)
 
-	//尝试接收数据
 	for {
 
 		if isConnected{
 
-			connClient, connClientErr := net.Dial("tcp", server)
+			if runtime.GOOS =="linux"{
+				//如果是在linux平台下，启用linux的iptables来转发数据
 
-			if connClientErr != nil {
-				conn.Close()
-				log.Error("connClientErr:",server)
+				if conn!=nil {
+					isSucc:=route.IpsetAdd(conn.RemoteAddr().String(), server)
+					if isSucc{
+						log.Error("add to ipset err")
+					}
+					conn.Close()
+				}
 				return
+			}else {
+				//如果不是在linux平台下，只能使用数据考虑的方式来进行转发，效率慢
+				connClient, connClientErr := net.Dial("tcp", server)
+
+				if connClientErr != nil {
+					conn.Close()
+					log.Error("connClientErr:",server)
+					return
+				}
+				//把之前的数据给发过去
+				connClient.Write(buffer[:firstDataLen])
+				//建立0拷贝通道
+				go zerocopy.Transfer(connClient, conn)
+				_,zerocopyError:= zerocopy.Transfer(conn, connClient)
+				if zerocopyError!=nil{
+					isConnected=false
+					return
+				}
 			}
-			//把之前的数据给发过去
-			connClient.Write(buffer[:firstDataLen])
-			//建立0拷贝通道
-
-
-			 go zerocopy.Transfer(connClient, conn)
-			 _,zerocopyError:= zerocopy.Transfer(conn, connClient)
-			if zerocopyError!=nil{
-				isConnected=false
-				return
-			}
-
-
-
 		}else {
 			// 如果没有建立链接，需要先去创建连接
 			var err error

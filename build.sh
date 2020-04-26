@@ -4,7 +4,7 @@ CurrentVersion=0.0.3
 Project=TcpLoadBalance
 
 #编译目标平台 (windows,linux...)
-targetGOOS=windows
+targetGOOS=linux
 targetGOARCH=amd64
 
 #二进制生成文件存放路径
@@ -20,11 +20,13 @@ binPath=/Users/zhangfeng/Documents/GoProject/Bin/
 GitCommit=$(git rev-parse --short HEAD || echo unsupported)
 
 fileName=""
-if (($targetGOOS == windows))
-then
-  fileName=$Project".exe"
-fi
 
+if [ $targetGOOS = windows ]; then
+  fileName=$Project".exe"
+else
+   fileName=$Project
+fi
+echo $fileName
 GOOS=$targetGOOS GOARCH=$targetGOARCH go build -o $binPath'/'$Project'/'$fileName  -ldflags "-X main.Version=$CurrentVersion -X 'main.BuildTime=`date "+%Y-%m-%d %H:%M:%S"`' -X 'main.GoVersion=`go version`' -X main.GitCommit=$GitCommit"
 
 if [ $? -eq 0 ]; then

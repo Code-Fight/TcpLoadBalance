@@ -1,6 +1,8 @@
 package main
 
 import (
+	"TcpLoadBalance/balance"
+	"TcpLoadBalance/linuxRoute"
 	"TcpLoadBalance/socket"
 	"TcpLoadBalance/units"
 	"fmt"
@@ -11,20 +13,30 @@ import (
 	"os"
 )
 
-
-
+//定义backend
+//如果要使用别的balance算法，继承Balancer，然后实现即可
+//参考HashBalancer
+var bl balance.Balancer = &balance.HashBalancer{}
+var route *linuxRoute.Route
 func main() {
 
+	//注入版本信息
 	VersionInit()
 
-
+	//config
 	units.ConfigInit()
 	port:=units.GetPort()
 
+	//balance初始化
+	bl.BalanceInit()
 
+	//初始化LinuxRoute
+	route = linuxRoute.NewRoute()
 
+	//启动server
 	go InitTcpServer(port)
 
+	//debug
 	httpErr:= http.ListenAndServe("0.0.0.0:16061", nil)
 	if httpErr!=nil{
 		fmt.Println("HTTP Server ERR:",httpErr.Error())
@@ -54,13 +66,13 @@ func InitTcpServer(port string) {
 		}
 
 		log.Debug(conn.RemoteAddr().String(), " tcp connect success")
-		go socket.HandleConnection(conn)
+		go socket.HandleConnection(conn,route)
 	}
 }
 
 //解包
 func Unpack(buffer []byte) (remainData []byte,isContuine bool,isSucc bool,server string) {
-	return buffer,false,true,"192.168.2.115:12048"
+	//return buffer,false,true,"192.168.2.115:12048"
 
 	length := len(buffer)
 
@@ -82,8 +94,9 @@ func Unpack(buffer []byte) (remainData []byte,isContuine bool,isSucc bool,server
 			}
 			data := buffer[i : i+messageLength]
 
-			//TODO:解析data 判断是否可以直接停止
-			return data,false,true,"192.168.2.115：12048"
+			serverIp:=AssignBackend(data)
+
+			return data,false,true,serverIp
 
 
 
@@ -102,7 +115,12 @@ func Unpack(buffer []byte) (remainData []byte,isContuine bool,isSucc bool,server
 	return buffer[i:],true,false,""
 }
 
-func AssignBackend() {
+//根据protocol data进行分配后端服务器
+func AssignBackend(data []byte) string {
 
+
+	//根据数据包的19-21位进行hash
+	//这里可以根据自己的实际需要进行选择
+	return bl.GetNode(string(data[19:]))
 }
 
